@@ -61,3 +61,12 @@ def create_preventive_youtube_agent():
         return {"youtube_response": final_text}
 
     return preventive_youtube_agent
+
+
+# ------------------ Example Usage ------------------
+if __name__ == "__main__":
+    agent = create_preventive_youtube_agent()
+    query_input = {"query_text": "Tell me about malaria prevention"}
+    result = agent(query_input)
+    print("\n--- YouTube Video Results ---")
+    print(result["youtube_response"])

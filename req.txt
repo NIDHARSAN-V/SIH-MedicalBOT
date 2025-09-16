@@ -1,0 +1,17 @@
+numpy
+pandas
+scikit-learn
+groq
+gradio
+python-dotenv
+gtts
+elevenlabs
+speechrecognition
+pydub
+langgraph
+langchain-groq
+langchain
+chromadb
+langchain-community
+pypdf
+sentence-transformers

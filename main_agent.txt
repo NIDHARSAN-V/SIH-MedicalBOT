@@ -1,0 +1,123 @@
+from langgraph.graph import StateGraph, END
+from typing import TypedDict, Optional, Literal
+from symptom_agent.symptom_agent import create_symptom_agent
+from preventive_agent.preventive_measure_agent import create_preventive_measure_agent
+import os
+
+class AgentState(TypedDict):
+    audio_filepath: Optional[str]
+    image_filepath: Optional[str]
+    query_text: Optional[str]
+    speech_to_text: Optional[str]
+    doctor_response: Optional[str]
+    voice_of_doctor: Optional[str]
+    requires_symptom_analysis: bool
+    next_node: Optional[str]  # Add this field to track the next node
+    
+    
+    
+    
+
+def route_inputs(state: AgentState):
+    """Determine which agent to route to and return proper state"""
+    query = state.get("query_text", "") or state.get("speech_to_text", "")
+    
+    symptom_keywords = ["symptom", "pain", "hurt", "ache", "rash", "fever", 
+                       "ill", "sick", "disease", "condition", "diagnose", "medical",
+                       "headache", "nausea", "dizziness", "cough", "cold", "flu"]
+    
+    
+    preventive_keywords = ["prevent", "prevention", "avoid", "reduce risk", "stay healthy", "tips" , "remedies" ]
+    has_symptom_query = any(keyword in query.lower() for keyword in symptom_keywords)
+    has_preventive_query = any(keyword in query.lower() for keyword in preventive_keywords)
+    has_image = state.get("image_filepath") is not None
+    if has_symptom_query or has_image:
+        print("SYMPTOM_QUERY ======= ", query)
+        return {"next_node": "symptom_agent"}
+    elif has_preventive_query:
+        print("PREVENTIVE_QUERY ======= ", query)
+        return {"next_node": "preventive_measure_agent"}
+    else:
+        print("GENERAL_QUERY ======= ", query)
+        return {"next_node": "general_response"}
+    
+    
+    
+    
+
+def transcribe_audio(state: AgentState):
+    """Transcribe audio if provided"""
+    from voice_of_the_patient import transcribe_with_groq
+    
+    if state.get("audio_filepath"):
+        try:
+            speech_to_text = transcribe_with_groq(
+                GROQ_API_KEY=os.environ.get("GROQ_API_KEY"), 
+                audio_filepath=state["audio_filepath"],
+                stt_model="whisper-large-v3"
+            )
+            return {"speech_to_text": speech_to_text}
+        except Exception as e:
+            print(f"Audio transcription failed: {e}")
+            return {"speech_to_text": "Could not transcribe audio. Please try again or type your question."}
+    return {"speech_to_text": state.get("query_text", "")}
+
+
+
+def general_response(state: AgentState):
+    """Handle general non-symptom queries"""
+    from groq import Groq
+    
+    query = state.get("speech_to_text", state.get("query_text", ""))
+    
+    if not query:
+        return {"doctor_response": "Please ask a question or describe your symptoms."}
+    
+    client = Groq()
+    response = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a helpful medical assistant. Answer general health questions but defer to doctors for specific symptoms. Be concise and helpful."
+            },
+            {
+                "role": "user",
+                "content": query
+            }
+        ],
+        model="llama-3.1-8b-instant"
+    )
+    
+    return {"doctor_response": response.choices[0].message.content}
+
+
+
+
+def create_main_agent():
+    """Create the main agent workflow"""
+    workflow = StateGraph(AgentState)
+    # Add nodes
+    workflow.add_node("transcribe", transcribe_audio)
+    workflow.add_node("route", route_inputs)
+    workflow.add_node("symptom_agent", create_symptom_agent())
+    workflow.add_node("preventive_measure_agent", create_preventive_measure_agent())
+    workflow.add_node("general_response", general_response)
+    # Set entry point
+    workflow.set_entry_point("transcribe")
+    # Add edges
+    workflow.add_edge("transcribe", "route")
+    # Add conditional edges using the next_node field
+    workflow.add_conditional_edges(
+        "route",
+        lambda state: state.get("next_node", "general_response"),
+        {
+            "symptom_agent": "symptom_agent",
+            "preventive_measure_agent": "preventive_measure_agent",
+            "general_response": "general_response"
+        }
+    )
+    workflow.add_edge("symptom_agent", END)
+    workflow.add_edge("preventive_measure_agent", END)
+    workflow.add_edge("general_response", END)
+    return workflow.compile()
+

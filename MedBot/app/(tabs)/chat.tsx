@@ -42,6 +42,8 @@ export default function Chat() {
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [inputWrapperMargin, setInputWrapperMargin] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   
   const [messages, setMessages] = useState<Message[]>([
@@ -65,6 +67,8 @@ export default function Chat() {
       'keyboardDidShow',
       (e) => {
         setKeyboardHeight(e.endCoordinates.height);
+        setKeyboardVisible(true);
+        setInputWrapperMargin(e.endCoordinates.height);
         // Scroll to bottom when keyboard appears
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({ animated: true });
@@ -76,6 +80,8 @@ export default function Chat() {
       'keyboardDidHide',
       () => {
         setKeyboardHeight(0);
+        setKeyboardVisible(false);
+        setInputWrapperMargin(0);
       }
     );
 
@@ -85,14 +91,14 @@ export default function Chat() {
     };
   }, []);
 
-  // Scroll to bottom when new messages are added
+  // Scroll to bottom when new messages are added or keyboard appears
   useEffect(() => {
-    if (messages.length > 0) {
+    if (messages.length > 0 || keyboardVisible) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
-  }, [messages]);
+  }, [messages, keyboardVisible]);
 
   // Pulse animation for recording
   const startPulse = () => {
@@ -140,6 +146,9 @@ export default function Chat() {
         setIsRecording(false);
         stopPulse();
       } else {
+        // Dismiss keyboard when starting to record
+        Keyboard.dismiss();
+        
         // Start recording
         const permission = await Audio.requestPermissionsAsync();
         if (!permission.granted) {
@@ -194,6 +203,9 @@ export default function Chat() {
     
     setMessages((prev) => [...prev, newMessage]);
     setInputText("");
+
+    // Dismiss keyboard after sending
+    Keyboard.dismiss();
 
     setIsLoading(true);
 
@@ -292,6 +304,9 @@ export default function Chat() {
 
   /** Pick image from gallery */
   const pickImage = async () => {
+    // Dismiss keyboard when picking image
+    Keyboard.dismiss();
+    
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -308,6 +323,9 @@ export default function Chat() {
 
   /** Pick image using camera */
   const pickCamera = async () => {
+    // Dismiss keyboard when using camera
+    Keyboard.dismiss();
+    
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
       alert("Camera permission is required!");
@@ -394,126 +412,132 @@ export default function Chat() {
 
   return (
     <ThemedView style={[styles.container, isDarkMode && styles.containerDark]}>
-      <View style={styles.flexContainer}>
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={[
-            styles.messagesContainer,
-            { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 80 : 20 }
-          ]}
-          renderItem={renderItem}
-          keyboardDismissMode="on-drag"
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={styles.flexContainer}>
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={[
+              styles.messagesContainer,
+              { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 80 : 20 }
+            ]}
+            renderItem={renderItem}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          />
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
-          style={[styles.keyboardAvoidingView, { marginBottom: keyboardHeight > 0 ? 0 : 0 }]}
-        >
-          <ThemedView style={[styles.inputContainer, isDarkMode && styles.inputContainerDark]}>
-            {/* Show recorded audio preview if exists */}
-            {audioFile && (
-              <Animated.View 
-                style={[styles.audioPreview, isDarkMode && styles.audioPreviewDark, { opacity: fadeAnim }]}
-              >
-                <TouchableOpacity onPress={() => playAudio(audioFile.uri)}>
-                  <Ionicons name="play-circle" size={24} color={isDarkMode ? "#64B5F6" : "#007AFF"} />
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => setAudioFile(null)}
-                  style={styles.removeButton}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+            style={[styles.keyboardAvoidingView, { marginBottom: keyboardHeight > 0 ? 0 : 0 }]}
+          >
+            <ThemedView style={[styles.inputContainer, isDarkMode && styles.inputContainerDark]}>
+              {/* Show recorded audio preview if exists */}
+              {audioFile && (
+                <Animated.View 
+                  style={[styles.audioPreview, isDarkMode && styles.audioPreviewDark, { opacity: fadeAnim }]}
                 >
-                  <Ionicons name="close-circle" size={16} color="#FF3B30" />
-                </TouchableOpacity>
-              </Animated.View>
-            )}
+                  <TouchableOpacity onPress={() => playAudio(audioFile.uri)}>
+                    <Ionicons name="play-circle" size={24} color={isDarkMode ? "#64B5F6" : "#007AFF"} />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => setAudioFile(null)}
+                    style={styles.removeButton}
+                  >
+                    <Ionicons name="close-circle" size={16} color="#FF3B30" />
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
 
-            {/* Show image preview if exists */}
-            {(imageFile || cameraFile) && (
-              <Animated.View style={[styles.imagePreviewContainer, { opacity: fadeAnim }]}>
-                <Image 
-                  source={{ uri: (cameraFile || imageFile).uri }} 
-                  style={styles.smallImagePreview} 
+              {/* Show image preview if exists */}
+              {(imageFile || cameraFile) && (
+                <Animated.View style={[styles.imagePreviewContainer, { opacity: fadeAnim }]}>
+                  <Image 
+                    source={{ uri: (cameraFile || imageFile).uri }} 
+                    style={styles.smallImagePreview} 
+                  />
+                  <TouchableOpacity 
+                    onPress={() => {
+                      setImageFile(null);
+                      setCameraFile(null);
+                    }}
+                    style={styles.removeImageButton}
+                  >
+                    <Ionicons name="close-circle" size={16} color="#FF3B30" />
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
+
+              <View style={styles.actionsContainer}>
+                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                  <TouchableOpacity 
+                    onPress={toggleRecording} 
+                    style={[
+                      styles.iconButton, 
+                      isDarkMode && styles.iconButtonDark,
+                      isRecording && styles.recordingButton
+                    ]}
+                  >
+                    {isRecording ? (
+                      <FontAwesome name="stop" size={20} color="white" />
+                    ) : (
+                      <FontAwesome name="microphone" size={20} color="#FF3B30" />
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
+
+                <TouchableOpacity 
+                  onPress={pickImage} 
+                  style={[styles.iconButton, isDarkMode && styles.iconButtonDark]}
+                >
+                  <Ionicons name="image" size={24} color={isDarkMode ? "#64B5F6" : "#007AFF"} />
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  onPress={pickCamera} 
+                  style={[styles.iconButton, isDarkMode && styles.iconButtonDark]}
+                >
+                  <Ionicons name="camera" size={24} color={isDarkMode ? "#81C784" : "#26db12"} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={[
+                styles.inputWrapper, 
+                isDarkMode && styles.inputWrapperDark,
+                { marginBottom: inputWrapperMargin }
+              ]}>
+                <TextInput
+                  style={[styles.textInput, isDarkMode && styles.textInputDark]}
+                  placeholder="Type a message..."
+                  placeholderTextColor={isDarkMode ? "#9E9E9E" : "#999"}
+                  value={inputText}
+                  onChangeText={setInputText}
+                  onSubmitEditing={sendMessage}
+                  editable={!isLoading}
+                  multiline
+                  maxLength={500}
                 />
+                
                 <TouchableOpacity 
-                  onPress={() => {
-                    setImageFile(null);
-                    setCameraFile(null);
-                  }}
-                  style={styles.removeImageButton}
+                  style={[styles.sendButton, isLoading && styles.disabledButton]} 
+                  onPress={sendMessage}
+                  disabled={isLoading}
                 >
-                  <Ionicons name="close-circle" size={16} color="#FF3B30" />
-                </TouchableOpacity>
-              </Animated.View>
-            )}
-
-            <View style={styles.actionsContainer}>
-              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                <TouchableOpacity 
-                  onPress={toggleRecording} 
-                  style={[
-                    styles.iconButton, 
-                    isDarkMode && styles.iconButtonDark,
-                    isRecording && styles.recordingButton
-                  ]}
-                >
-                  {isRecording ? (
-                    <FontAwesome name="stop" size={20} color="white" />
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={isDarkMode ? "#9E9E9E" : "#999"} />
                   ) : (
-                    <FontAwesome name="microphone" size={20} color="#FF3B30" />
+                    <Ionicons name="send" size={24} color={isDarkMode ? "#64B5F6" : "#007AFF"} />
                   )}
                 </TouchableOpacity>
-              </Animated.View>
-
-              <TouchableOpacity 
-                onPress={pickImage} 
-                style={[styles.iconButton, isDarkMode && styles.iconButtonDark]}
-              >
-                <Ionicons name="image" size={24} color={isDarkMode ? "#64B5F6" : "#007AFF"} />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                onPress={pickCamera} 
-                style={[styles.iconButton, isDarkMode && styles.iconButtonDark]}
-              >
-                <Ionicons name="camera" size={24} color={isDarkMode ? "#81C784" : "#26db12"} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={[styles.inputWrapper, isDarkMode && styles.inputWrapperDark]}>
-              <TextInput
-                style={[styles.textInput, isDarkMode && styles.textInputDark]}
-                placeholder="Type a message..."
-                placeholderTextColor={isDarkMode ? "#9E9E9E" : "#999"}
-                value={inputText}
-                onChangeText={setInputText}
-                onSubmitEditing={sendMessage}
-                editable={!isLoading}
-                multiline
-                maxLength={500}
-              />
-              
-              <TouchableOpacity 
-                style={[styles.sendButton, isLoading && styles.disabledButton]} 
-                onPress={sendMessage}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator size="small" color={isDarkMode ? "#9E9E9E" : "#999"} />
-                ) : (
-                  <Ionicons name="send" size={24} color={isDarkMode ? "#64B5F6" : "#007AFF"} />
-                )}
-              </TouchableOpacity>
-            </View>
-          </ThemedView>
-        </KeyboardAvoidingView>
-      </View>
+              </View>
+            </ThemedView>
+          </KeyboardAvoidingView>
+        </View>
+      </TouchableWithoutFeedback>
     </ThemedView>
   );
 }

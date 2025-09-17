@@ -1,98 +1,112 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { ScrollView, StyleSheet, Text, View, Image, Animated } from 'react-native';
+import { useEffect, useRef } from 'react';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it hard</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  return (
+    <ScrollView style={styles.container}>
+      <Animated.View style={{ ...styles.header, opacity: fadeAnim }}>
+        <Text style={styles.title}>Welcome to MediBot</Text>
+        <Text style={styles.subtitle}>Your Personal Health Companion</Text>
+      </Animated.View>
+
+      <View style={styles.featureContainer}>
+        <Image source={require('@/assets/images/chatbot.png')} style={styles.icon} />
+        <Text style={styles.featureTitle}>Chatbot Assistant</Text>
+        <Text style={styles.featureDesc}>
+          Get instant health advice and answers to your queries.
+        </Text>
+      </View>
+
+      <View style={styles.featureContainer}>
+        <Image source={require('@/assets/images/disease.png')} style={styles.icon} />
+        <Text style={styles.featureTitle}>Disease Spread Nearby</Text>
+        <Text style={styles.featureDesc}>
+          Stay informed about outbreaks in your area with real-time updates.
+        </Text>
+      </View>
+
+      <View style={styles.featureContainer}>
+        <Image source={require('@/assets/images/records.png')} style={styles.icon} />
+        <Text style={styles.featureTitle}>Health Records</Text>
+        <Text style={styles.featureDesc}>
+          Upload and manage your medical documents easily.
+        </Text>
+      </View>
+
+      <View style={styles.featureContainer}>
+        <Image source={require('@/assets/images/reminder.png')} style={styles.icon} />
+        <Text style={styles.featureTitle}>Medication Reminders</Text>
+        <Text style={styles.featureDesc}>
+          Set alerts and never miss your medications or appointments.
+        </Text>
+      </View>
+
+      <View style={styles.featureContainer}>
+        <Image source={require('@/assets/images/emergency.png')} style={styles.icon} />
+        <Text style={styles.featureTitle}>Emergency Contacts</Text>
+        <Text style={styles.featureDesc}>
+          Connect to nearby hospitals and healthcare services instantly.
+        </Text>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  container: {
+    padding: 20,
+    backgroundColor: '#121212',  // Dark background
+  },
+  header: {
+    marginBottom: 20,
     alignItems: 'center',
-    gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff',  // White text
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  subtitle: {
+    fontSize: 18,
+    color: '#ccc',  // Lighter grey for subtitle
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  featureContainer: {
+    backgroundColor: '#1E1E1E',  // Dark card background
+    padding: 15,
+    marginVertical: 10,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  featureTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginTop: 10,
+    color: '#fff',  // White text
+  },
+  featureDesc: {
+    fontSize: 16,
+    color: '#aaa',  // Greyish text for readability
+    marginTop: 6,
+  },
+  icon: {
+    width: 60,
+    height: 60,
+    alignSelf: 'center',
   },
 });

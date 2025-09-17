@@ -10,6 +10,7 @@ import {
   View,
   Text,
   Image,
+  Alert,
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
@@ -26,6 +27,9 @@ type Message = {
   audioUri?: string;
 };
 
+// Your server URL - change this to your actual server IP
+const SERVER_URL = "http://10.84.85.67:5000"; // Replace with your computer's IP
+
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([
     { id: "1", text: "Hello! How can I assist you today?", sender: "bot" },
@@ -36,6 +40,7 @@ export default function Chat() {
   const [cameraFile, setCameraFile] = useState<any>(null);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   /** Toggle recording on button click */
   const toggleRecording = async () => {
@@ -92,7 +97,7 @@ export default function Chat() {
     }
   };
 
-  /** Send message */
+  /** Send message to Flask backend */
   const sendMessage = async () => {
     if (!inputText.trim() && !audioFile && !imageFile && !cameraFile) return;
 
@@ -106,22 +111,85 @@ export default function Chat() {
     setMessages((prev) => [...prev, newMessage]);
     setInputText("");
 
-    // Reset files
-    setAudioFile(null);
-    setImageFile(null);
-    setCameraFile(null);
+    setIsLoading(true);
 
-    // Fake bot reply
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          text: "Thanks for your message!",
-          sender: "bot",
+    try {
+      // Create form data to send to Flask
+      const formData = new FormData();
+      
+      if (inputText.trim()) {
+        formData.append('query_text', inputText.trim());
+      }
+      
+      if (audioFile) {
+        formData.append('audio', {
+          uri: audioFile.uri,
+          name: audioFile.name || 'recording.m4a',
+          type: audioFile.mimeType || 'audio/m4a'
+        } as any);
+      }
+      
+      // Only send one image (priority: camera image over gallery image)
+      const imageToSend = cameraFile || imageFile;
+      if (imageToSend) {
+        formData.append('image', {
+          uri: imageToSend.uri,
+          name: imageToSend.name || 'image.jpg',
+          type: imageToSend.type || 'image/jpeg'
+        } as any);
+      }
+
+      // Send request to Flask backend
+      const response = await fetch(`${SERVER_URL}/process`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'multipart/form-data',
         },
-      ]);
-    }, 1000);
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Create bot message with response from Flask
+      const botMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: data.doctor_response || "I'm not sure how to respond to that.",
+        sender: "bot",
+      };
+
+      // If there's an audio response from the doctor, add it to the message
+      if (data.voice_of_doctor) {
+        botMessage.audioUri = `${SERVER_URL}${data.voice_of_doctor}`;
+      }
+
+      setMessages((prev) => [...prev, botMessage]);
+
+    } catch (error) {
+      console.error("Error sending message to server:", error);
+      
+      // Fallback message if server is unavailable
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "Sorry, I'm having trouble connecting to the server. Please try again later.",
+        sender: "bot",
+      };
+      
+      setMessages((prev) => [...prev, errorMessage]);
+      
+      Alert.alert("Error", "Could not connect to the server. Please check your connection and try again.");
+    } finally {
+      setIsLoading(false);
+      
+      // Reset files
+      setAudioFile(null);
+      setImageFile(null);
+      setCameraFile(null);
+    }
   };
 
   /** Pick image from gallery */
@@ -254,10 +322,19 @@ export default function Chat() {
             value={inputText}
             onChangeText={setInputText}
             onSubmitEditing={sendMessage}
+            editable={!isLoading}
           />
 
-          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-            <IconSymbol name="paperplane.fill" size={24} color="#007AFF" />
+          <TouchableOpacity 
+            style={[styles.sendButton, isLoading && styles.disabledButton]} 
+            onPress={sendMessage}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <IconSymbol name="arrow.triangle.2.circlepath" size={24} color="#999" />
+            ) : (
+              <IconSymbol name="paperplane.fill" size={24} color="#007AFF" />
+            )}
           </TouchableOpacity>
         </ThemedView>
       </KeyboardAvoidingView>
@@ -296,6 +373,7 @@ const styles = StyleSheet.create({
     minWidth: 100,
   },
   sendButton: { padding: 10 },
+  disabledButton: { opacity: 0.5 },
   iconButton: { padding: 10 },
   imagePreview: {
     width: 200,

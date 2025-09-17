@@ -16,6 +16,41 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 @app.route('/')
 def home():
     return "AI Doctor Backend is running."
+@app.route('/download/<filename>')
+def download_file(filename):
+    try:
+        # Make sure the filename is safe
+        print("Filename received for download:", filename)
+        safe_filename = secure_filename(filename)
+        
+        # Create the full path to the file in the CURRENT directory
+        file_path = os.path.join(os.path.dirname(__file__), safe_filename)
+        
+        print(f"Looking for file at: {file_path}")
+        
+        # Check if the file exists
+        if not os.path.exists(file_path):
+            print(f"File not found: {file_path}")
+            # List files in current directory for debugging
+            current_dir = os.path.dirname(__file__)
+            print(f"Files in current directory: {os.listdir(current_dir)}")
+            return "File not found", 404
+        
+        print(f"File found: {file_path}")
+        
+        # Send the file with correct headers for audio playback
+        return send_file(
+            file_path, 
+            as_attachment=False,  # Don't force download, allow playback
+            mimetype='audio/mpeg',  # Set correct MIME type for MP3
+            conditional=True  # Enable conditional requests (304 responses)
+        )
+        
+    except Exception as e:
+        print(f"Error in download endpoint: {str(e)}")
+        traceback.print_exc()
+        return "Error downloading file", 500
+    
 
 @app.route('/process', methods=['POST'])
 def process():
@@ -46,6 +81,9 @@ def process():
         "image_filepath": image_filepath,
         "query_text": query_text
     }
+    
+    
+    
 
     # Process with agent
     result = agent.invoke(inputs)

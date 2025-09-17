@@ -14,7 +14,7 @@ class AgentState(TypedDict):
     voice_of_doctor: Optional[str]
     requires_symptom_analysis: bool
     next_node: Optional[str]  # Track the next node
-
+    
 
 def route_inputs(state: AgentState):
     """Use LLM classification to decide the next node"""
@@ -140,3 +140,6 @@ def create_main_agent():
     workflow.add_edge("general_response", END)
 
     return workflow.compile()
+
+
+

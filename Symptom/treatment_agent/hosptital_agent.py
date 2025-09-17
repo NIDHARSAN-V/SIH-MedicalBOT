@@ -92,7 +92,3 @@ def main():
 
     result = hospitals_agent(state)
     print(result["doctor_response"])
-
-
-if __name__ == "__main__":
-    main()

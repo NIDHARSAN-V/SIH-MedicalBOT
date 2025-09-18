@@ -36,7 +36,7 @@ type Message = {
 };
 
 // Your server URL - change this to your actual server IP
-const SERVER_URL = "http://10.84.85.67:5000"; // Replace with your computer's IP
+const SERVER_URL = "http://10.84.85.98:5000"; // Replace with your computer's IP
 
 export default function Chat() {
   const colorScheme = useColorScheme();
@@ -436,40 +436,48 @@ export default function Chat() {
             style={[styles.keyboardAvoidingView, { marginBottom: keyboardHeight > 0 ? 0 : 0 }]}
           >
             <ThemedView style={[styles.inputContainer, isDarkMode && styles.inputContainerDark]}>
-              {/* Show recorded audio preview if exists */}
-              {audioFile && (
-                <Animated.View 
-                  style={[styles.audioPreview, isDarkMode && styles.audioPreviewDark, { opacity: fadeAnim }]}
-                >
-                  <TouchableOpacity onPress={() => playAudio(audioFile.uri)}>
-                    <Ionicons name="play-circle" size={24} color={isDarkMode ? "#64B5F6" : "#007AFF"} />
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={() => setAudioFile(null)}
-                    style={styles.removeButton}
-                  >
-                    <Ionicons name="close-circle" size={16} color="#FF3B30" />
-                  </TouchableOpacity>
-                </Animated.View>
-              )}
+              {/* Preview row for attachments */}
+              {(audioFile || imageFile || cameraFile) && (
+                <View style={styles.previewRow}>
+                  {/* Show recorded audio preview if exists */}
+                  {audioFile && (
+                    <Animated.View 
+                      style={[styles.audioPreview, isDarkMode && styles.audioPreviewDark, { opacity: fadeAnim }]}
+                    >
+                      <TouchableOpacity onPress={() => playAudio(audioFile.uri)}>
+                        <Ionicons name="play-circle" size={24} color={isDarkMode ? "#64B5F6" : "#007AFF"} />
+                      </TouchableOpacity>
+                      <Text style={[styles.previewText, isDarkMode && styles.previewTextDark]}>
+                        Audio ready
+                      </Text>
+                      <TouchableOpacity 
+                        onPress={() => setAudioFile(null)}
+                        style={styles.removeButton}
+                      >
+                        <Ionicons name="close-circle" size={20} color="#FF3B30" />
+                      </TouchableOpacity>
+                    </Animated.View>
+                  )}
 
-              {/* Show image preview if exists */}
-              {(imageFile || cameraFile) && (
-                <Animated.View style={[styles.imagePreviewContainer, { opacity: fadeAnim }]}>
-                  <Image 
-                    source={{ uri: (cameraFile || imageFile).uri }} 
-                    style={styles.smallImagePreview} 
-                  />
-                  <TouchableOpacity 
-                    onPress={() => {
-                      setImageFile(null);
-                      setCameraFile(null);
-                    }}
-                    style={styles.removeImageButton}
-                  >
-                    <Ionicons name="close-circle" size={16} color="#FF3B30" />
-                  </TouchableOpacity>
-                </Animated.View>
+                  {/* Show image preview if exists */}
+                  {(imageFile || cameraFile) && (
+                    <Animated.View style={[styles.imagePreviewContainer, { opacity: fadeAnim }]}>
+                      <Image 
+                        source={{ uri: (cameraFile || imageFile).uri }} 
+                        style={styles.smallImagePreview} 
+                      />
+                      <TouchableOpacity 
+                        onPress={() => {
+                          setImageFile(null);
+                          setCameraFile(null);
+                        }}
+                        style={styles.removeImageButton}
+                      >
+                        <Ionicons name="close-circle" size={20} color="#FF3B30" />
+                      </TouchableOpacity>
+                    </Animated.View>
+                  )}
+                </View>
               )}
 
               <View style={styles.actionsContainer}>
@@ -669,10 +677,10 @@ const styles = StyleSheet.create({
   },
   removeImageButton: {
     position: 'absolute',
-    top: -5,
-    right: -5,
+    top: -8,
+    right: -8,
     backgroundColor: 'white',
-    borderRadius: 10,
+    borderRadius: 12,
   },
   audioPlayButton: {
     padding: 10,
@@ -688,7 +696,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#e6f2ff',
     padding: 8,
     borderRadius: 16,
-    marginBottom: 8,
+    marginRight: 8,
     alignSelf: 'flex-start',
   },
   audioPreviewDark: {
@@ -704,5 +712,18 @@ const styles = StyleSheet.create({
   },
   keyboardAvoidingView: {
     flex: 0,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  previewText: {
+    marginLeft: 6,
+    fontSize: 14,
+    color: '#333',
+  },
+  previewTextDark: {
+    color: '#FFF',
   },
 });
